@@ -1,0 +1,13 @@
+PCOS 0.3 verified source build
+
+Verified in this environment:
+- freestanding 32-bit i386 ELF link
+- valid Multiboot v1 header
+- no undefined kernel symbols
+- pcfs/initrd media and PCOSDATA validation
+- DOS86 COM + MZ EXE + VGA13 keyboard wait/resume execution smoketest
+- Legacy DOS protected->real mode trampoline: relocation-free copied block and expected BIOS chainloader opcodes
+
+Not runtime-tested here:
+- QEMU/ISO boot (qemu-system-i386, grub-mkrescue and xorriso are not installed in this execution environment)
+- physical legacy BIOS hardware
