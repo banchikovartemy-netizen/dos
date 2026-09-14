@@ -1,6 +1,7 @@
 #include "vga.h"
 #include "multiboot.h"
 #include "lib.h"
+#include "io.h"
 
 static volatile u16 *const VGA=(u16*)0xB8000;
 static u8 theme_id=0;
@@ -26,6 +27,7 @@ u32 vga_rgb_fg(void){return rgb_themes[theme_id][0];} u32 vga_rgb_dim(void){retu
 u32 vga_rgb_hi(void){return rgb_themes[theme_id][2];} u32 vga_rgb_bg(void){return rgb_themes[theme_id][3];}
 
 void vga_set_theme(u8 t){theme_id=t%(sizeof(themes)/sizeof(themes[0]));}
+static void disable_hw_cursor(void){outb(0x3D4,0x0A);outb(0x3D5,(u8)(inb(0x3D5)|0x20));}
 
 static u8 glyph_row(char c,int row){
     if(c>='a'&&c<='z')c=(char)(c-'a'+'A');
@@ -66,6 +68,7 @@ static u32 comp(u32 c,u8 pos,u8 bits){ if(bits>=8)return ((c&255u)<<pos); u32 ma
 static u32 pack_rgb(u32 rgb){u32 r=(rgb>>16)&255,g=(rgb>>8)&255,b=rgb&255;return comp(r,rpos,rsize)|comp(g,gpos,gsize)|comp(b,bpos,bsize);}
 
 void vga_init(u32 magic,u32 mbi_addr){
+    disable_hw_cursor();
     if(magic!=MULTIBOOT_BOOTLOADER_MAGIC)return;
     MultibootInfo *m=(MultibootInfo*)mbi_addr;
     if((m->flags&MBI_FLAG_FB)&&m->framebuffer_addr&&m->framebuffer_width&&m->framebuffer_height&&m->framebuffer_type==1){
@@ -77,32 +80,11 @@ void vga_init(u32 magic,u32 mbi_addr){
 }
 
 int vga_framebuffer(void){return fb_on;} u32 vga_px_width(void){return fb_w;} u32 vga_px_height(void){return fb_h;} u32 vga_px_bpp(void){return fb_bpp;}
-void vga_pixel(int x,int y,u32 rgb){
-    if(!fb_on||x<0||y<0||x>=(int)fb_w||y>=(int)fb_h)return; u32 p=pack_rgb(rgb); u8 *d=fb+(u32)y*fb_pitch+(u32)x*((fb_bpp+7)/8);
-    if(fb_bpp==32){*(u32*)d=p;} else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);} else if(fb_bpp==16){*(u16*)d=(u16)p;}
-}
-void vga_fill_px(int x,int y,int w,int h,u32 rgb){
-    if(!fb_on||w<=0||h<=0)return;
-    if(x<0){w+=x;x=0;} if(y<0){h+=y;y=0;} if(x+w>(int)fb_w)w=(int)fb_w-x; if(y+h>(int)fb_h)h=(int)fb_h-y; if(w<=0||h<=0)return;
-    u32 p=pack_rgb(rgb),bytes=(fb_bpp+7)/8;
-    for(int yy=0;yy<h;yy++){u8*d=fb+(u32)(y+yy)*fb_pitch+(u32)x*bytes;for(int xx=0;xx<w;xx++,d+=bytes){if(fb_bpp==32)*(u32*)d=p;else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);}else if(fb_bpp==16)*(u16*)d=(u16)p;}}
-}
-void vga_cell_rect(int cx,int cy,int cw,int ch,int *x,int *y,int *w,int *h){
-    if(fb_on){*x=off_x+cx*6*scale;*y=off_y+cy*8*scale;*w=cw*6*scale;*h=ch*8*scale;}else{*x=cx;*y=cy;*w=cw;*h=ch;}
-}
+void vga_pixel(int x,int y,u32 rgb){if(!fb_on||x<0||y<0||x>=(int)fb_w||y>=(int)fb_h)return;u32 p=pack_rgb(rgb);u8*d=fb+(u32)y*fb_pitch+(u32)x*((fb_bpp+7)/8);if(fb_bpp==32){*(u32*)d=p;}else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);}else if(fb_bpp==16){*(u16*)d=(u16)p;}}
+void vga_fill_px(int x,int y,int w,int h,u32 rgb){if(!fb_on||w<=0||h<=0)return;if(x<0){w+=x;x=0;}if(y<0){h+=y;y=0;}if(x+w>(int)fb_w)w=(int)fb_w-x;if(y+h>(int)fb_h)h=(int)fb_h-y;if(w<=0||h<=0)return;u32 p=pack_rgb(rgb),bytes=(fb_bpp+7)/8;for(int yy=0;yy<h;yy++){u8*d=fb+(u32)(y+yy)*fb_pitch+(u32)x*bytes;for(int xx=0;xx<w;xx++,d+=bytes){if(fb_bpp==32)*(u32*)d=p;else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);}else if(fb_bpp==16)*(u16*)d=(u16)p;}}}
+void vga_cell_rect(int cx,int cy,int cw,int ch,int*x,int*y,int*w,int*h){if(fb_on){*x=off_x+cx*6*scale;*y=off_y+cy*8*scale;*w=cw*6*scale;*h=ch*8*scale;}else{*x=cx;*y=cy;*w=cw;*h=ch;}}
 
-void vga_put(int x,int y,char c,u8 attr){
-    if(x<0||y<0||x>=VGA_W||y>=VGA_H)return;
-    if(!fb_on){VGA[y*VGA_W+x]=(u16)(u8)c|((u16)attr<<8);return;}
-    u32 fg=(attr&15)==vga_hi()?vga_rgb_hi():((attr&15)==vga_dim()?vga_rgb_dim():vga_rgb_fg()); u32 bg=vga_rgb_bg();
-    int px=off_x+x*6*scale,py=off_y+y*8*scale; vga_fill_px(px,py,6*scale,8*scale,bg);
-    for(int r=0;r<7;r++){u8 bits=glyph_row(c,r);for(int col=0;col<5;col++)if(bits&(1u<<(4-col)))vga_fill_px(px+col*scale,py+r*scale,scale,scale,fg);}
-}
-void vga_clear(void){
-    if(fb_on){vga_fill_px(0,0,(int)fb_w,(int)fb_h,vga_rgb_bg());return;}
-    u8 a=(u8)(vga_fg()|(vga_bg()<<4));for(int y=0;y<VGA_H;y++)for(int x=0;x<VGA_W;x++)vga_put(x,y,' ',a);
-}
-void vga_text(int x,int y,const char *s,u8 a){while(*s&&x<VGA_W)vga_put(x++,y,*s++,a);} void vga_text_clip(int x,int y,const char *s,int max,u8 a){int n=0;while(*s&&x<VGA_W&&n++<max)vga_put(x++,y,*s++,a);} 
-void vga_fill(int x,int y,int w,int h,char c,u8 a){for(int yy=0;yy<h;yy++)for(int xx=0;xx<w;xx++)vga_put(x+xx,y+yy,c,a);} void vga_hline(int x,int y,int w,char c,u8 a){for(int i=0;i<w;i++)vga_put(x+i,y,c,a);} void vga_vline(int x,int y,int h,char c,u8 a){for(int i=0;i<h;i++)vga_put(x,y+i,c,a);}
-
+void vga_put(int x,int y,char c,u8 attr){if(x<0||y<0||x>=VGA_W||y>=VGA_H)return;if(!fb_on){VGA[y*VGA_W+x]=(u16)(u8)c|((u16)attr<<8);return;}u32 fg=(attr&15)==vga_hi()?vga_rgb_hi():((attr&15)==vga_dim()?vga_rgb_dim():vga_rgb_fg());u32 bg=vga_rgb_bg();int px=off_x+x*6*scale,py=off_y+y*8*scale;vga_fill_px(px,py,6*scale,8*scale,bg);for(int r=0;r<7;r++){u8 bits=glyph_row(c,r);for(int col=0;col<5;col++)if(bits&(1u<<(4-col)))vga_fill_px(px+col*scale,py+r*scale,scale,scale,fg);}}
+void vga_clear(void){if(fb_on){vga_fill_px(0,0,(int)fb_w,(int)fb_h,vga_rgb_bg());return;}u8 a=(u8)(vga_fg()|(vga_bg()<<4));for(int y=0;y<VGA_H;y++)for(int x=0;x<VGA_W;x++)vga_put(x,y,' ',a);}
+void vga_text(int x,int y,const char*s,u8 a){while(*s&&x<VGA_W)vga_put(x++,y,*s++,a);}void vga_text_clip(int x,int y,const char*s,int max,u8 a){int n=0;while(*s&&x<VGA_W&&n++<max)vga_put(x++,y,*s++,a);}void vga_fill(int x,int y,int w,int h,char c,u8 a){for(int yy=0;yy<h;yy++)for(int xx=0;xx<w;xx++)vga_put(x+xx,y+yy,c,a);}void vga_hline(int x,int y,int w,char c,u8 a){for(int i=0;i<w;i++)vga_put(x+i,y,c,a);}void vga_vline(int x,int y,int h,char c,u8 a){for(int i=0;i<h;i++)vga_put(x,y+i,c,a);}
 void vga_cursor_cell(int x,int y){u8 a=(u8)(vga_hi()|(vga_bg()<<4));vga_put(x,y,'+',a);}
