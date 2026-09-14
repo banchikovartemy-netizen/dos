@@ -28,10 +28,9 @@ void idt_init(void){
 __attribute__((noreturn)) void fault_handler(u32 vector,u32 error){
     char a[11],b[11];hextext(vector,a);hextext(error,b);
     e9s("PCOS FATAL EXCEPTION vector=");e9hex(vector);e9s(" error=");e9hex(error);e9s("\n");
-    /* Direct VGA emergency path stays ASCII-only so it also works before the UTF-8 renderer starts. */
-    text("PCOS // KRITICHESKAYA OSHIBKA PROTSESSORA",0,0x4F);
-    text("VEKTOR:",2,0x0F);text(a,3,0x0F);
-    text("KOD OSHIBKI:",5,0x0F);text(b,6,0x0F);
-    text("SISTEMA OSTANOVLENA - AVTOPEREZAGRUZKI NET",8,0x0F);
+    text("PCOS // FATAL CPU EXCEPTION",0,0x4F);
+    text("VECTOR:",2,0x0F);text(a,3,0x0F);
+    text("ERROR CODE:",5,0x0F);text(b,6,0x0F);
+    text("SYSTEM HALTED - NO AUTOMATIC REBOOT",8,0x0F);
     for(;;){__asm__ volatile("cli; hlt");}
 }
