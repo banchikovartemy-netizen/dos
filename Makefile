@@ -8,6 +8,7 @@ C_SRC := $(filter-out apps/apps.c,$(wildcard kernel/*.c drivers/*.c ui/*.c apps/
 OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
 ISO := build/pcos-0.7.iso
+QEMU_RTC := -rtc base=localtime
 
 .PHONY: all clean assets iso run run-web run-audio run-debug run-legacy run-doom web-setup web-bridge check test-dos86 add-game legacy-add-game doom-install
 
@@ -67,7 +68,7 @@ iso: build/pcos.elf assets
 	@echo "Created $(ISO)"
 
 run: iso
-	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
 
 web-setup:
 	python3 -m venv .venv
@@ -85,14 +86,14 @@ run-web: iso
 	.venv/bin/python tools/web_bridge.py & BRIDGE=$$!; \
 	trap 'kill $$BRIDGE 2>/dev/null || true' EXIT INT TERM; \
 	sleep 1; \
-	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
 
 run-audio: iso
-	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0 -no-reboot -no-shutdown
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0 -no-reboot -no-shutdown
 
 run-legacy: iso
 	@test -n "$(DOSIMG)" || (echo "Usage: make run-legacy DOSIMG=/path/to/bootable-dos-disk.img"; exit 1)
-	qemu-system-i386 -m 32M -vga std \
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std \
 		-drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
 		-drive file="$(DOSIMG)",format=raw,if=ide,index=1 \
 		-cdrom $(ISO) -boot d \
@@ -100,14 +101,14 @@ run-legacy: iso
 
 run-doom: iso
 	@test -n "$(DOOMIMG)" || (echo "Usage: make run-doom DOOMIMG=/path/to/bootable-dos-with-doom.img"; exit 1)
-	qemu-system-i386 -m 32M -vga std \
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std \
 		-drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
 		-drive file="$(DOOMIMG)",format=raw,if=ide,index=1 \
 		-cdrom $(ISO) -boot d \
 		-nic user,model=rtl8139 -device sb16
 
 run-debug: iso
-	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
+	qemu-system-i386 $(QEMU_RTC) -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
 
 clean:
 	rm -rf build/* iso/boot/pcos.elf iso/boot/pcfs.tar
