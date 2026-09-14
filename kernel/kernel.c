@@ -20,7 +20,7 @@ static int boot_full(u32 magic,u32 mbi_addr){
     if(!(m->flags&(1u<<2))||!m->cmdline)return 0;return has_word((const char*)m->cmdline,"full");
 }
 void kernel_main(u32 magic,u32 mbi_addr){
-    AppId current=APP_TERMINAL;int mx=8,my=8;int full=boot_full(magic,mbi_addr);int heartbeat=0;int menu_focus=0;
+    AppId current=APP_TERMINAL;int mx=8,my=8;int full=boot_full(magic,mbi_addr);int heartbeat=0;int menu_focus=0;u32 clock_last=0;
     debug_puts("PCOS 0.7: kernel_main\n");
     idt_init();
     debug_puts("PCOS: video init\n");vga_init(magic,mbi_addr);
@@ -39,8 +39,9 @@ void kernel_main(u32 magic,u32 mbi_addr){
     }else debug_puts("PCOS: SAFE mode - optional drivers deferred\n");
     debug_puts("PCOS: entering event loop\n");
     for(;;){
-        int redraw=0;timer_poll();
-        if(!heartbeat&&timer_ticks()>=500){debug_puts("PCOS: ALIVE 5S\n");heartbeat=1;}
+        int redraw=0;timer_poll();u32 now=timer_ticks();u32 hz=timer_hz();
+        if(hz&&now-clock_last>=hz){clock_last=now;redraw=1;}
+        if(!heartbeat&&now>=500){debug_puts("PCOS: ALIVE 5S\n");heartbeat=1;}
         net_poll();
         MouseEvent m=mouse_poll();
         if(m.moved||m.clicked){
