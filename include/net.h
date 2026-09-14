@@ -15,6 +15,7 @@ u32 net_rx_packets(void);
 u32 net_tx_packets(void);
 u32 net_ping_replies(void);
 const char *net_state(void);
+int net_web_command(const char *command);
 int net_web_open(const char *url);
 int net_web_read(char *out,u32 outn);
 const char *net_web_state(void);
