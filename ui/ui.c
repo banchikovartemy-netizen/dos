@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "vga.h"
 #include "apps.h"
+#include "keyboard.h"
 #define SIDE_W 17
 static u8 attr(u8 fg){return(u8)(fg|(vga_bg()<<4));}
 void ui_frame(const char*title){vga_text(19,1,"[ ",attr(vga_dim()));vga_text_clip(21,1,title,44,attr(vga_hi()));vga_text(66,1," ]",attr(vga_dim()));vga_hline(19,2,59,'-',attr(vga_dim()));}
@@ -20,8 +21,9 @@ void ui_draw(AppId app){
     }
     vga_text(2,17,"ВВЕРХ/ВНИЗ",d);
     vga_text(2,18,"F1..F11 БЫСТРО",d);
+    vga_text(2,19,"F12 RU/EN",d);
     vga_text(2,20,"ASCII//HUD",d);
-    vga_text(2,21,"ВВОД//PS2",a);
+    vga_text(2,21,"РАСКЛАДКА//",a);vga_text(13,21,keyboard_layout_name(),h);
     vga_text(2,23,"БЕЗ КОМПОЗИТОРА",d);
     apps_draw(app);
 }
