@@ -31,7 +31,8 @@ static const char*track_names[]={"future.wav","machine.wav","night.wav"};
 static int video_frame=0,video_frames=0,video_play=0;static u32 video_last=0;
 static int game_sel=0;static char dos_out[512]="SELECT A GAME AND PRESS ENTER";static u32 dos_draw_last=0;
 static char browser_url[128]="example.com";static int browser_len=11;
-static char browser_page[1200]="PCOS BROWSER READY.\n\nSTART tools/web_bridge.py ON THE HOST, THEN TYPE A URL AND PRESS ENTER OR CLICK [GO].\n\nTHE BRIDGE USES REAL CHROMIUM FOR TLS, HTML, CSS AND JAVASCRIPT WHILE PCOS STAYS LIGHTWEIGHT.";
+static int browser_addr_focus=1,browser_skip_utf8_tail=0;
+static char browser_page[1200]="PCOS BROWSER READY.\n\nSTART tools/web_bridge.py ON THE HOST, TYPE A URL, THEN PRESS ENTER OR CLICK [GO].\n\nCLICK THE ASCII PAGE TO INTERACT WITH THE REAL CHROMIUM PAGE. KEYBOARD INPUT IS FORWARDED TO THE CLICKED WEB ELEMENT.";
 
 static u8 A(void){return(u8)(vga_fg()|(vga_bg()<<4));}
 static u8 D(void){return(u8)(vga_dim()|(vga_bg()<<4));}
@@ -47,7 +48,21 @@ static void log_num(const char*pre,u32 v){char l[LOG_BYTES],n[16];kstrncpy(l,pre
 static void fullpath(char*out,usize n,const char*dir,const char*name){kstrncpy(out,dir,n);kstrcat(out,"/",n);kstrcat(out,name,n);}
 static const u8*track(int i,u32*sz){char p[96];fullpath(p,sizeof(p),"pc/music",track_names[i]);return fs_read_path(p,sz);}
 static void launch_doom(void){kstrncpy(dos_out,"DOOM 1: CHAINLOADING LEGACY DOS HDD2...",sizeof(dos_out));legacy_boot_drive(0x81);}
-static void browser_open(void){browser_url[browser_len]=0;if(net_web_open(browser_url))kstrncpy(browser_page,"LOADING THROUGH PCOS WEB BRIDGE...",sizeof(browser_page));else kstrncpy(browser_page,"BROWSER COULD NOT SEND REQUEST. START FULL DRIVERS AND CHECK NETWORK.",sizeof(browser_page));}
+static void browser_busy(void){kstrncpy(browser_page,"WAITING FOR CHROMIUM WEB BRIDGE...",sizeof(browser_page));}
+static void browser_command(const char*s){if(net_web_command(s))browser_busy();else kstrncpy(browser_page,"BROWSER COMMAND FAILED. START FULL DRIVERS AND CHECK THE WEB BRIDGE.",sizeof(browser_page));}
+static void browser_open(void){browser_url[browser_len]=0;if(net_web_open(browser_url)){browser_addr_focus=0;browser_busy();}else kstrncpy(browser_page,"BROWSER COULD NOT SEND REQUEST. START FULL DRIVERS AND CHECK NETWORK.",sizeof(browser_page));}
+static void browser_key_command(const char*name){char q[40]="KEY ";kstrcat(q,name,sizeof(q));browser_command(q);}
+static void browser_type(KeyEvent e){
+    if(browser_skip_utf8_tail&&e.ch&&(((u8)e.ch&0xC0)==0x80)){browser_skip_utf8_tail=0;return;}
+    char q[16]="TYPE ";int p=5;
+    if(e.cp>=0x80&&e.cp<0x800){q[p++]=(char)(0xC0|(e.cp>>6));q[p++]=(char)(0x80|(e.cp&0x3F));browser_skip_utf8_tail=1;}
+    else if(e.ch)q[p++]=e.ch;else return;
+    q[p]=0;browser_command(q);
+}
+static void browser_click_remote(int x,int y){
+    int rx=(x-CX)*16+8,ry=(y-8)*32+16;if(rx<0)rx=0;if(rx>895)rx=895;if(ry<0)ry=0;if(ry>447)ry=447;
+    char q[64]="CLICK ",n[16];kitoa(rx,n);kstrcat(q,n,sizeof(q));kstrcat(q," ",sizeof(q));kitoa(ry,n);kstrcat(q,n,sizeof(q));browser_addr_focus=0;browser_command(q);
+}
 
 static void terminal_backspace_utf8(void){if(term_len<=0)return;term_len--;while(term_len>0&&(((u8)term_in[term_len]&0xC0)==0x80))term_len--;term_in[term_len]=0;}
 static void terminal_exec(void){
@@ -101,8 +116,7 @@ static void terminal_exec(void){
 }
 
 static void draw_terminal(void){
-    ui_frame("TERMINAL // PCOS SHELL");
-    vga_text(CX,4,"PCOS SHELL 0.7 // type help",D());
+    ui_frame("TERMINAL // PCOS SHELL");vga_text(CX,4,"PCOS SHELL 0.7 // type help",D());
     for(int i=0;i<logcount;i++)vga_text_clip(CX,6+i,logbuf[i],LINE_W,A());
     char p[160];kstrncpy(p,cwd,sizeof(p));kstrcat(p,"$ ",sizeof(p));kstrcat(p,term_in,sizeof(p));vga_text_clip(CX,20,p,LINE_W,H());
     int x=CX+(int)kstrlen(p);if(x<78)vga_put(x,20,'_',H());
@@ -159,8 +173,8 @@ static void browser_text(void){
     int pos=0,y=8;while(browser_page[pos]&&y<22){char line[64];int j=0;while(browser_page[pos]&&browser_page[pos]!='\n'&&j<55)line[j++]=browser_page[pos++];if(browser_page[pos]=='\n')pos++;line[j]=0;vga_text_clip(CX,y++,line,55,A());}
 }
 static void draw_browser(void){
-    ui_frame("BROWSER // CHROMIUM WEB BRIDGE");vga_text(CX,4,"URL",D());vga_text(CX+4,4,"[",D());vga_text_clip(CX+5,4,browser_url,43,H());vga_text(CX+49,4,"]",D());vga_text(CX+51,4,"[GO]",H());
-    vga_text(CX,6,net_web_state(),D());browser_text();vga_text(CX,23,"HOST BRIDGE 10.0.2.2:7777 // REAL CHROMIUM",D());
+    ui_frame("BROWSER // REAL CHROMIUM BRIDGE");vga_text(CX,4,browser_addr_focus?"URL*":"URL ",browser_addr_focus?H():D());vga_text(CX+4,4,"[",D());vga_text_clip(CX+5,4,browser_url,43,browser_addr_focus?H():A());vga_text(CX+49,4,"]",D());vga_text(CX+51,4,"[GO]",H());
+    vga_text(CX,6,browser_addr_focus?"CLICK PAGE TO CONTROL IT // CLICK URL TO EDIT":"PAGE INPUT ACTIVE // CLICK URL TO EDIT",D());vga_text_clip(CX,7,net_web_state(),LINE_W,D());browser_text();vga_text(CX,23,"CLICK ASCII PAGE -> CHROMIUM // 10.0.2.2:7777",D());
 }
 static void draw_network(void){
     ui_frame("NETWORK");char mac[18],ip[16],gw[16],dns[16],n[16];net_get_mac(mac);net_get_ip(ip);net_get_gateway(gw);net_get_dns(dns);
@@ -198,7 +212,10 @@ void apps_key(AppId a,KeyEvent e){
     else if(a==APP_VIDEO){if(e.ch==' ')video_play=!video_play;else if(e.special==KEY_LEFT&&video_frames>0)video_frame=(video_frame+video_frames-1)%video_frames;else if(e.special==KEY_RIGHT&&video_frames>0)video_frame=(video_frame+1)%video_frames;}
     else if(a==APP_CALCULATOR){if(e.special==KEY_ENTER){int ok=0,r=evaluate(calc_in,&ok);if(ok)kitoa(r,calc_result);else kstrncpy(calc_result,"ERROR",sizeof(calc_result));}else if(e.special==KEY_BACKSPACE&&calc_len>0)calc_in[--calc_len]=0;else if(e.ch&&calc_len<(int)sizeof(calc_in)-1){calc_in[calc_len++]=e.ch;calc_in[calc_len]=0;}}
     else if(a==APP_GAMES){if(dos86_active()){if(e.special==KEY_ESC){dos86_stop();kstrncpy(dos_out,"PROGRAM STOPPED",sizeof(dos_out));}else dos86_key(e);}else{int n=0,dn=0;const FsEntry*ls=fs_list("pc/games",&n);for(int i=0;i<n;i++)if(ls[i].type==FS_DOS)dn++;if(e.ch=='l'||e.ch=='L'||e.ch=='d'||e.ch=='D')launch_doom();else if(e.special==KEY_UP&&game_sel>0)game_sel--;else if(e.special==KEY_DOWN&&game_sel<dn)game_sel++;else if(e.special==KEY_ENTER)games_run_selected();}}
-    else if(a==APP_BROWSER){if(e.special==KEY_ENTER)browser_open();else if(e.special==KEY_BACKSPACE&&browser_len>0){browser_len--;while(browser_len>0&&(((u8)browser_url[browser_len]&0xC0)==0x80))browser_len--;browser_url[browser_len]=0;}else if(e.ch&&browser_len<(int)sizeof(browser_url)-1){browser_url[browser_len++]=e.ch;browser_url[browser_len]=0;}}
+    else if(a==APP_BROWSER){
+        if(browser_addr_focus){if(e.special==KEY_ENTER)browser_open();else if(e.special==KEY_BACKSPACE&&browser_len>0){browser_len--;while(browser_len>0&&(((u8)browser_url[browser_len]&0xC0)==0x80))browser_len--;browser_url[browser_len]=0;}else if(e.ch&&browser_len<(int)sizeof(browser_url)-1){browser_url[browser_len++]=e.ch;browser_url[browser_len]=0;}}
+        else{if(e.special==KEY_ENTER)browser_key_command("ENTER");else if(e.special==KEY_BACKSPACE)browser_key_command("BACKSPACE");else if(e.special==KEY_ESC)browser_key_command("ESCAPE");else if(e.special==KEY_LEFT)browser_key_command("LEFT");else if(e.special==KEY_RIGHT)browser_key_command("RIGHT");else if(e.special==KEY_UP)browser_key_command("UP");else if(e.special==KEY_DOWN)browser_key_command("DOWN");else browser_type(e);}
+    }
     else if(a==APP_NETWORK){if(e.ch=='d'||e.ch=='D')net_request_dhcp();else if(e.ch=='p'||e.ch=='P')net_ping_gateway();}
     else if(a==APP_SETTINGS&&e.ch>='1'&&e.ch<='5')vga_set_theme((u8)(e.ch-'1'));
 }
@@ -210,14 +227,14 @@ void apps_mouse(AppId a,int x,int y,u8 buttons,u8 clicked){
     else if(a==APP_PHOTOS){int n=0,pn=0;const FsEntry*e=fs_list("pc/photos",&n);for(int i=0;i<n;i++)if(e[i].type==FS_IMAGE)pn++;if(pn)photo_sel=x<CX+28?(photo_sel+pn-1)%pn:(photo_sel+1)%pn;}
     else if(a==APP_VIDEO)video_play=!video_play;
     else if(a==APP_GAMES&&!dos86_active()&&y>=5&&y<=14){game_sel=y-5;games_run_selected();}
-    else if(a==APP_BROWSER&&y==4&&x>=CX+50){browser_open();}
+    else if(a==APP_BROWSER){if(y==4&&x>=CX+4&&x<CX+51){browser_addr_focus=1;}else if(y==4&&x>=CX+51){browser_open();}else if(y>=8&&y<22&&x>=CX&&x<CX+56){browser_click_remote(x,y);}}
     else if(a==APP_NETWORK&&y>=20){if(x<CX+28)net_request_dhcp();else net_ping_gateway();}
     else if(a==APP_SETTINGS&&y>=7&&y<=11)vga_set_theme((u8)(y-7));
 }
 
 int apps_tick(AppId a){
     if(a==APP_GAMES&&dos86_active()){dos86_step(12000);u32 t=timer_ticks(),step=timer_hz()/20;if(step<1)step=1;if(t-dos_draw_last>=step){dos_draw_last=t;return 1;}}
-    if(a==APP_VIDEO&&video_play&&video_frames>0){u32 t=timer_ticks(),step=timer_hz()/6;if(step<1)step=1;if(t-video_last>=step){video_last=t;video_frame=(video_frame+1)%video_frames;return 1;}}
+    if(a==APP_VIDEO&&video_play&&video_frames>0){u32 t=timer_ticks(),step=timer_hz()/6;if(step<1)step=1;if(t-dos_draw_last>=step){video_last=t;video_frame=(video_frame+1)%video_frames;return 1;}}
     if(a==APP_BROWSER){char p[1200];if(net_web_read(p,sizeof(p))){kstrncpy(browser_page,p,sizeof(browser_page));return 1;}}
     return 0;
 }
