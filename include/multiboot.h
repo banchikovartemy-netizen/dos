@@ -4,6 +4,7 @@
 
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002u
 #define MBI_FLAG_MEM  (1u<<0)
+#define MBI_FLAG_CMDLINE (1u<<2)
 #define MBI_FLAG_MODS (1u<<3)
 #define MBI_FLAG_FB   (1u<<12)
 
