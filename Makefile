@@ -35,6 +35,8 @@ build/pcos.elf: $(OBJ) linker.ld
 assets:
 	@mkdir -p build
 	python3 tools/make_assets.py
+	python3 tools/english_assets.py
+	tar --format=ustar -cf $(ASSET_TAR) -C assets pc
 
 test-dos86: assets
 	$(HOSTCC) -std=gnu99 -O0 -Iinclude tools/dos86_smoketest.c dos/dos86.c kernel/lib.c -o build/dos86-smoketest
