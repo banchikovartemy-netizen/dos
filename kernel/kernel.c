@@ -25,7 +25,7 @@ void kernel_main(u32 magic,u32 mbi_addr){
     idt_init();
     debug_puts("PCOS: video init\n");vga_init(magic,mbi_addr);
     debug_puts("PCOS: core apps/fs init\n");apps_init(magic,mbi_addr);
-    debug_puts("PCOS: first UI draw\n");ui_draw(current);vga_cursor_cell(mx,my);
+    debug_puts("PCOS: first UI draw\n");ui_draw(current);
     debug_puts("PCOS: UI ONLINE\n");
     timer_init(100);debug_puts("PCOS: timer online\n");
     if(full){
@@ -41,7 +41,14 @@ void kernel_main(u32 magic,u32 mbi_addr){
         if(!heartbeat && timer_ticks()>=500){debug_puts("PCOS: ALIVE 5S\n");heartbeat=1;}
         net_poll();
         MouseEvent m=mouse_poll();if(m.moved||m.clicked){mx+=m.dx/3;my+=m.dy/5;if(mx<0)mx=0;if(mx>=VGA_W)mx=VGA_W-1;if(my<1)my=1;if(my>=VGA_H)my=VGA_H-1;if(m.clicked&&mx<17&&my>=4&&my<4+APP_COUNT)current=(AppId)(my-4);redraw=1;}
-        KeyEvent e=keyboard_poll();if(e.pressed){if(e.special>=KEY_F1&&e.special<=KEY_F11)current=(AppId)(e.special-KEY_F1);else apps_key(current,e);redraw=1;}
-        if(apps_tick(current))redraw=1;if(redraw){ui_draw(current);vga_cursor_cell(mx,my);}cpu_pause();
+        KeyEvent e=keyboard_poll();
+        if(e.pressed){
+            if(e.special>=KEY_F1&&e.special<=KEY_F11){current=(AppId)(e.special-KEY_F1);redraw=1;}
+            else if(e.special==KEY_UP){current=(AppId)(((int)current+APP_COUNT-1)%APP_COUNT);redraw=1;}
+            else if(e.special==KEY_DOWN){current=(AppId)(((int)current+1)%APP_COUNT);redraw=1;}
+            else {apps_key(current,e);redraw=1;}
+        }
+        if(apps_tick(current))redraw=1;
+        if(redraw){ui_draw(current);if(full)vga_cursor_cell(mx,my);}cpu_pause();
     }
 }
