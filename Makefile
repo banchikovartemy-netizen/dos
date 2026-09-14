@@ -2,11 +2,12 @@ CC ?= gcc
 HOSTCC ?= gcc
 LD ?= ld
 NM ?= nm
-CFLAGS := -m32 -std=gnu99 -O2 -ffreestanding -fno-pie -fno-stack-protector -fno-builtin -fno-asynchronous-unwind-tables -fno-unwind-tables -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Iinclude
+CFLAGS := -m32 -march=i386 -mtune=generic -std=gnu99 -O2 -ffreestanding -fno-pie -fno-pic -fno-plt -fno-stack-protector -fno-builtin -fno-asynchronous-unwind-tables -fno-unwind-tables -mpreferred-stack-boundary=2 -mincoming-stack-boundary=2 -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Iinclude
 LDFLAGS := -m elf_i386 -T linker.ld
 C_SRC := $(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c)
 OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
+ISO := build/pcos-0.5.iso
 
 .PHONY: all clean assets iso run run-audio run-debug run-legacy check test-dos86 add-game legacy-add-game
 
@@ -18,15 +19,15 @@ build/%.o: %.c
 
 build/boot/boot.o: boot/boot.S
 	@mkdir -p $(dir $@)
-	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
+	$(CC) -m32 -march=i386 -ffreestanding -fno-pie -fno-pic -c $< -o $@
 
 build/boot/legacy.o: boot/legacy.S
 	@mkdir -p $(dir $@)
-	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
+	$(CC) -m32 -march=i386 -ffreestanding -fno-pie -fno-pic -c $< -o $@
 
 build/boot/isr.o: boot/isr.S
 	@mkdir -p $(dir $@)
-	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
+	$(CC) -m32 -march=i386 -ffreestanding -fno-pie -fno-pic -c $< -o $@
 
 build/pcos.elf: $(OBJ) linker.ld
 	$(LD) $(LDFLAGS) $(OBJ) -o $@
@@ -60,25 +61,25 @@ iso: build/pcos.elf assets
 	@mkdir -p iso/boot/grub
 	cp build/pcos.elf iso/boot/pcos.elf
 	cp $(ASSET_TAR) iso/boot/pcfs.tar
-	grub-mkrescue -o build/pcos-0.4.iso iso
-	@echo "Created build/pcos-0.4.iso"
+	grub-mkrescue -o $(ISO) iso
+	@echo "Created $(ISO)"
 
 run: iso
-	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -boot d -nic user,model=rtl8139 -device sb16
+	qemu-system-i386 -m 16M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
 
 run-audio: iso
-	qemu-system-i386 -m 32M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0
+	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0 -no-reboot -no-shutdown
 
 run-legacy: iso
 	@test -n "$(DOSIMG)" || (echo "Usage: make run-legacy DOSIMG=/path/to/bootable-dos-disk.img"; exit 1)
-	qemu-system-i386 -m 32M \
+	qemu-system-i386 -m 32M -vga std \
 		-drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
 		-drive file="$(DOSIMG)",format=raw,if=ide,index=1 \
-		-cdrom build/pcos-0.4.iso -boot d \
+		-cdrom $(ISO) -boot d \
 		-nic user,model=rtl8139 -device sb16
 
 run-debug: iso
-	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -debugcon stdio -global isa-debugcon.iobase=0xe9
+	qemu-system-i386 -m 16M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
 
 clean:
 	rm -rf build/* iso/boot/pcos.elf iso/boot/pcfs.tar
