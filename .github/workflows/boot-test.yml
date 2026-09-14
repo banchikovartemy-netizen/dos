@@ -17,7 +17,7 @@ jobs:
           sudo apt-get install -y gcc-multilib grub-pc-bin grub-common xorriso qemu-system-x86 mtools
       - name: Compile and validate
         run: make clean && make check && make iso
-      - name: Headless safe-boot smoke test
+      - name: Headless safe-boot stability test
         run: |
           rm -f build/qemu-debug.log
           timeout 15s qemu-system-i386 \
@@ -27,11 +27,13 @@ jobs:
             -display none -serial none -monitor none \
             -no-reboot -no-shutdown \
             -debugcon file:build/qemu-debug.log \
-            -global isa-debugcon.iobase=0xe9 || true
+            -global isa-debugcon.iobase=0xe9 || rc=$?
           cat build/qemu-debug.log
+          ! grep -q "EXCEPTION" build/qemu-debug.log
           grep -q "PCOS: UI ONLINE" build/qemu-debug.log
           grep -q "PCOS: entering event loop" build/qemu-debug.log
-      - name: Headless full-driver boot test
+          grep -q "PCOS: ALIVE 5S" build/qemu-debug.log
+      - name: Headless full-driver stability test
         run: |
           sed -i 's/set default=0/set default=1/' iso/boot/grub/grub.cfg
           make iso
@@ -44,10 +46,12 @@ jobs:
             -display none -serial none -monitor none \
             -no-reboot -no-shutdown \
             -debugcon file:build/qemu-full-debug.log \
-            -global isa-debugcon.iobase=0xe9 || true
+            -global isa-debugcon.iobase=0xe9 || rc=$?
           cat build/qemu-full-debug.log
+          ! grep -q "EXCEPTION" build/qemu-full-debug.log
           grep -q "PCOS: ATA init done" build/qemu-full-debug.log
           grep -q "PCOS: mouse init done" build/qemu-full-debug.log
           grep -q "PCOS: network init done" build/qemu-full-debug.log
           grep -q "PCOS: audio init done" build/qemu-full-debug.log
           grep -q "PCOS: entering event loop" build/qemu-full-debug.log
+          grep -q "PCOS: ALIVE 5S" build/qemu-full-debug.log
