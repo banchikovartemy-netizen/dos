@@ -45,6 +45,7 @@ void kernel_main(u32 magic,u32 mbi_addr){
         KeyEvent e=keyboard_poll();
         if(e.pressed){
             if(e.special>=KEY_F1&&e.special<=KEY_F11){current=(AppId)(e.special-KEY_F1);redraw=1;}
+            else if(e.special==KEY_LAYOUT){redraw=1;}
             else if(e.special==KEY_UP){current=(AppId)(((int)current+APP_COUNT-1)%APP_COUNT);redraw=1;}
             else if(e.special==KEY_DOWN){current=(AppId)(((int)current+1)%APP_COUNT);redraw=1;}
             else{apps_key(current,e);redraw=1;}
