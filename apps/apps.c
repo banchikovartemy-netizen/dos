@@ -170,11 +170,11 @@ static void draw_games(void){
     vga_text(CX,15,"ENTER / CLICK = RUN",D());vga_text(CX,16,"DOOM REQUIRES YOUR LEGAL DOS DISK + DOOM1.WAD",H());vga_text_clip(CX,18,dos86_level(),56,A());vga_text_clip(CX,20,dos_out,56,H());vga_text(CX,22,"DOS86=WINDOWED // DOOM=LEGACY CHAINLOAD",D());
 }
 static void browser_text(void){
-    int pos=0,y=8;while(browser_page[pos]&&y<22){char line[64];int j=0;while(browser_page[pos]&&browser_page[pos]!='\n'&&j<55)line[j++]=browser_page[pos++];if(browser_page[pos]=='\n')pos++;line[j]=0;vga_text_clip(CX,y++,line,55,A());}
+    int pos=0,y=7;while(browser_page[pos]&&y<22){char line[64];int j=0;while(browser_page[pos]&&browser_page[pos]!='\n'&&j<55)line[j++]=browser_page[pos++];if(browser_page[pos]=='\n')pos++;line[j]=0;vga_text_clip(CX,y++,line,55,A());}
 }
 static void draw_browser(void){
     ui_frame("BROWSER // REAL CHROMIUM BRIDGE");vga_text(CX,4,browser_addr_focus?"URL*":"URL ",browser_addr_focus?H():D());vga_text(CX+4,4,"[",D());vga_text_clip(CX+5,4,browser_url,43,browser_addr_focus?H():A());vga_text(CX+49,4,"]",D());vga_text(CX+51,4,"[GO]",H());
-    vga_text(CX,6,browser_addr_focus?"CLICK PAGE TO CONTROL IT // CLICK URL TO EDIT":"PAGE INPUT ACTIVE // CLICK URL TO EDIT",D());vga_text_clip(CX,7,net_web_state(),LINE_W,D());browser_text();vga_text(CX,23,"CLICK ASCII PAGE -> CHROMIUM // 10.0.2.2:7777",D());
+    vga_text(CX,6,browser_addr_focus?"CLICK PAGE TO CONTROL IT // CLICK URL TO EDIT":"PAGE INPUT ACTIVE // CLICK URL TO EDIT",D());browser_text();vga_text_clip(CX,22,net_web_state(),LINE_W,D());vga_text(CX,23,"CLICK ASCII PAGE -> CHROMIUM // 10.0.2.2:7777",D());
 }
 static void draw_network(void){
     ui_frame("NETWORK");char mac[18],ip[16],gw[16],dns[16],n[16];net_get_mac(mac);net_get_ip(ip);net_get_gateway(gw);net_get_dns(dns);
@@ -234,7 +234,7 @@ void apps_mouse(AppId a,int x,int y,u8 buttons,u8 clicked){
 
 int apps_tick(AppId a){
     if(a==APP_GAMES&&dos86_active()){dos86_step(12000);u32 t=timer_ticks(),step=timer_hz()/20;if(step<1)step=1;if(t-dos_draw_last>=step){dos_draw_last=t;return 1;}}
-    if(a==APP_VIDEO&&video_play&&video_frames>0){u32 t=timer_ticks(),step=timer_hz()/6;if(step<1)step=1;if(t-dos_draw_last>=step){video_last=t;video_frame=(video_frame+1)%video_frames;return 1;}}
+    if(a==APP_VIDEO&&video_play&&video_frames>0){u32 t=timer_ticks(),step=timer_hz()/6;if(step<1)step=1;if(t-video_last>=step){video_last=t;video_frame=(video_frame+1)%video_frames;return 1;}}
     if(a==APP_BROWSER){char p[1200];if(net_web_read(p,sizeof(p))){kstrncpy(browser_page,p,sizeof(browser_page));return 1;}}
     return 0;
 }
