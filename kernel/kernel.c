@@ -47,7 +47,7 @@ void kernel_main(u32 magic,u32 mbi_addr){
         if(m.moved||m.clicked){
             mx+=m.dx/3;my+=m.dy/5;if(mx<0)mx=0;if(mx>=VGA_W)mx=VGA_W-1;if(my<1)my=1;if(my>=VGA_H)my=VGA_H-1;
             if(m.clicked){
-                if(mx<17&&my>=4&&my<4+APP_COUNT){current=(AppId)(my-4);menu_focus=0;}
+                if(mx<18&&my>=2&&my<2+APP_COUNT){current=(AppId)(my-2);menu_focus=0;}
                 else{apps_mouse(current,mx,my,m.buttons,m.clicked);menu_focus=0;}
             }
             redraw=1;
