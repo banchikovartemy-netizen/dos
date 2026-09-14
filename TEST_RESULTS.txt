@@ -1,0 +1,14 @@
+PCOS v0.3 source validation
+
+PASS: DOS86 COM, MZ EXE, VGA13 and keyboard wait/resume
+PASS: Multiboot v1 header is valid
+PASS: Legacy DOS trampoline is PIC, relocation-free, 154 bytes, BIOS chainloader patterns present
+PASS: pcfs media, DOS COM/MZ/VGA13 samples, and PCOSDATA image are valid
+PASS: no undefined kernel symbols
+
+Verified build artifacts from the source version used for this repository:
+- 32-bit Intel i386 ELF kernel
+- kernel about 137 KiB
+- generated pcfs/initrd about 430 KiB
+
+The GitHub repository intentionally does not store generated build/, ISO or PCOSDATA image files. Run `make assets`, `make check` and `make iso` to recreate them.
