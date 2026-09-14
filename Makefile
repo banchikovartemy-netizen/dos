@@ -122,5 +122,5 @@ legacy-add-game:
 	./tools/inject_legacy_game.sh "$(DOSIMG)" "$(GAME)"
 
 doom-install:
-	@test -n "$(DOSIMG)" -a -n "$(GAME)" || (echo "Usage: make doom-install DOSIMG=/path/dos.img GAME=/path/to/DOOM-directory-or-files"; exit 1)
-	./tools/inject_legacy_game.sh "$(DOSIMG)" "$(GAME)"
+	@test -n "$(DOSIMG)" -a -n "$(GAME)" || (echo "Usage: make doom-install DOSIMG=/path/dos.img GAME=/path/to/DOOM-directory"; exit 1)
+	bash tools/install_doom_legacy.sh "$(DOSIMG)" "$(GAME)"
