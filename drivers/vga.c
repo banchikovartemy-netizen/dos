@@ -81,7 +81,12 @@ void vga_pixel(int x,int y,u32 rgb){
     if(!fb_on||x<0||y<0||x>=(int)fb_w||y>=(int)fb_h)return; u32 p=pack_rgb(rgb); u8 *d=fb+(u32)y*fb_pitch+(u32)x*((fb_bpp+7)/8);
     if(fb_bpp==32){*(u32*)d=p;} else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);} else if(fb_bpp==16){*(u16*)d=(u16)p;}
 }
-void vga_fill_px(int x,int y,int w,int h,u32 rgb){if(!fb_on)return;for(int yy=0;yy<h;yy++)for(int xx=0;xx<w;xx++)vga_pixel(x+xx,y+yy,rgb);}
+void vga_fill_px(int x,int y,int w,int h,u32 rgb){
+    if(!fb_on||w<=0||h<=0)return;
+    if(x<0){w+=x;x=0;} if(y<0){h+=y;y=0;} if(x+w>(int)fb_w)w=(int)fb_w-x; if(y+h>(int)fb_h)h=(int)fb_h-y; if(w<=0||h<=0)return;
+    u32 p=pack_rgb(rgb),bytes=(fb_bpp+7)/8;
+    for(int yy=0;yy<h;yy++){u8*d=fb+(u32)(y+yy)*fb_pitch+(u32)x*bytes;for(int xx=0;xx<w;xx++,d+=bytes){if(fb_bpp==32)*(u32*)d=p;else if(fb_bpp==24){d[0]=(u8)p;d[1]=(u8)(p>>8);d[2]=(u8)(p>>16);}else if(fb_bpp==16)*(u16*)d=(u16)p;}}
+}
 void vga_cell_rect(int cx,int cy,int cw,int ch,int *x,int *y,int *w,int *h){
     if(fb_on){*x=off_x+cx*6*scale;*y=off_y+cy*8*scale;*w=cw*6*scale;*h=ch*8*scale;}else{*x=cx;*y=cy;*w=cw;*h=ch;}
 }
