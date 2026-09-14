@@ -28,6 +28,7 @@ void kernel_main(u32 magic,u32 mbi_addr){
     debug_puts("PCOS: first UI draw\n");ui_draw(current);
     debug_puts("PCOS: UI ONLINE\n");
     timer_init(100);debug_puts("PCOS: timer online\n");
+    keyboard_init();debug_puts("PCOS: keyboard online\n");
     if(full){
         debug_puts("PCOS: FULL drivers requested\n");
         ata_init();debug_puts("PCOS: ATA init done\n");
