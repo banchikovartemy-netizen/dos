@@ -21,10 +21,20 @@ stack_top:
 .type _start, @function
 .extern kernel_main
 _start:
+    /* Do not trust firmware/bootloader CPU flags.  PCOS polls hardware and
+       installs its own IDT before it ever enables interrupts. */
+    cli
+    cld
+
+    /* Give C a clean ABI-compatible stack.  GCC on newer Arch releases is
+       stricter about i386 stack alignment than older distro compilers. */
     mov $stack_top, %esp
-    push %ebx
-    push %eax
+    and $-16, %esp
+    sub $8, %esp
+    push %ebx              /* mbi_addr */
+    push %eax              /* multiboot magic */
     call kernel_main
+
 1:
     cli
     hlt
