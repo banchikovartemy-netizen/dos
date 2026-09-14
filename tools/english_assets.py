@@ -10,6 +10,9 @@ A = ROOT / "assets" / "pc"
     "Use the mouse to click applications and controls.\n"
     "TAB switches keyboard focus between the sidebar and the active app.\n"
     "F12 or Alt+Shift switches EN/RU keyboard input.\n"
+    "Top HUD shows CMOS date, HH:MM:SS and DAY/NIGHT.\n"
+    "ANIMATIONS contains 10 procedural ASCII scenes with inline, left-HUD and fullscreen modes.\n"
+    "MAP contains COUNTRIES, ROADS, RAIL, CITIES and TIME ZONES schematic layers.\n"
     "Terminal: type help.\n",
     encoding="utf-8",
 )
@@ -20,7 +23,7 @@ A = ROOT / "assets" / "pc"
 )
 
 (A / "config" / "display.cfg").write_text(
-    "MODE=AUTO\nTHEME=TERMINAL_RED\nRENDER=ASCII_HUD\nLANGUAGE=ENGLISH\n",
+    "MODE=AUTO\nTHEME=TERMINAL_RED\nRENDER=ASCII_HUD\nLANGUAGE=ENGLISH\nCLOCK=CMOS_RTC\n",
     encoding="utf-8",
 )
 (A / "config" / "network.cfg").write_text(
@@ -30,7 +33,7 @@ A = ROOT / "assets" / "pc"
 
 apps = [
     "files", "terminal", "notes", "player", "photos", "video",
-    "calculator", "games", "browser", "network", "system", "settings",
+    "calculator", "games", "browser", "animations", "map", "network", "system", "settings",
 ]
 for name in apps:
     (A / "apps" / f"{name}.app").write_text(
@@ -47,6 +50,6 @@ for name in apps:
 )
 
 (A / "system" / "version.txt").write_text(
-    "PCOS 0.7\nKERNEL=i386\nUI=ASCII_HUD\nLANGUAGE=ENGLISH\nINPUT=EN_RU_SWITCHABLE\nBROWSER=CHROMIUM_WEB_BRIDGE\nDOOM=LEGACY_DOS_HDD2_LAUNCHER\n",
+    "PCOS 0.7\nKERNEL=i386\nUI=ASCII_HUD\nLANGUAGE=ENGLISH\nINPUT=EN_RU_SWITCHABLE\nCLOCK=CMOS_RTC_DAY_NIGHT\nANIMATIONS=10_PROCEDURAL_ASCII\nMAP=OFFLINE_HUD_ATLAS\nBROWSER=CHROMIUM_WEB_BRIDGE\nDOOM=LEGACY_DOS_HDD2_LAUNCHER\n",
     encoding="utf-8",
 )
