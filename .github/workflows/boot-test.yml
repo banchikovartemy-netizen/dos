@@ -1,0 +1,33 @@
+name: PCOS boot test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build and emulator tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib grub-pc-bin grub-common xorriso qemu-system-x86 mtools
+      - name: Compile and validate
+        run: make clean && make check && make iso
+      - name: Headless safe-boot smoke test
+        run: |
+          rm -f build/qemu-debug.log
+          timeout 15s qemu-system-i386 \
+            -m 16M \
+            -drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
+            -cdrom build/pcos-0.4.iso -boot d \
+            -display none -serial none -monitor none \
+            -no-reboot -no-shutdown \
+            -debugcon file:build/qemu-debug.log \
+            -global isa-debugcon.iobase=0xe9 || true
+          cat build/qemu-debug.log
+          grep -q "PCOS: UI ONLINE" build/qemu-debug.log
+          grep -q "PCOS: entering event loop" build/qemu-debug.log
