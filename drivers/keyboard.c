@@ -15,7 +15,7 @@ static const u32 ru_upper[128]={
  [0x29]=0x0401,[0x2C]=0x042F,[0x2D]=0x0427,[0x2E]=0x0421,[0x2F]=0x041C,[0x30]=0x0418,[0x31]=0x0422,[0x32]=0x042C,[0x33]=0x0411,[0x34]=0x042E
 };
 
-static int layout_ru=1;
+static int layout_ru=0;
 static u8 pending_utf8=0;
 static int wait_in(void){for(u32 i=0;i<100000;i++)if(!(inb(0x64)&2))return 1;return 0;}
 static int wait_out(void){for(u32 i=0;i<100000;i++)if(inb(0x64)&1)return 1;return 0;}
@@ -27,7 +27,7 @@ void keyboard_init(void){
     if(wait_in())outb(0x64,0xAE);if(wait_in())outb(0x64,0x20);
     u8 c=wait_out()?inb(0x60):0x40;c|=0x40;c&=(u8)~0x10;
     if(wait_in())outb(0x64,0x60);if(wait_in())outb(0x60,c);if(wait_in())outb(0x60,0xF4);if(wait_out())(void)inb(0x60);
-    layout_ru=1;pending_utf8=0;
+    layout_ru=0;pending_utf8=0;
 }
 
 static void put_utf8(KeyEvent *e,u32 cp){
