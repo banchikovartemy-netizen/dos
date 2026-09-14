@@ -5,13 +5,17 @@ ROOT=Path(__file__).resolve().parents[1]
 A=ROOT/'assets'/'pc'
 for d in ['apps','files','games','music','photos','video','system','config','temp']:
     (A/d).mkdir(parents=True,exist_ok=True)
-(A/'files'/'readme.txt').write_text('PCOS 0.3\nRETRO FUTURE / LOW POWER OPERATING SYSTEM\n\nUse F1..F11 or mouse. Terminal: help\n',encoding='ascii')
-(A/'files'/'notes.txt').write_text('PCOS // NOTES\n\nAUTO-SAVE. PERSISTS WHEN PCOS DATA DISK IS ATTACHED.\n',encoding='ascii')
-(A/'config'/'display.cfg').write_text('MODE=AUTO\nTHEME=TERMINAL_RED\nRENDER=ASCII_HUD\n',encoding='ascii')
-(A/'config'/'network.cfg').write_text('MODE=DHCP\nDRIVER=RTL8139\n',encoding='ascii')
-for n in ['terminal','files','notes','player','photos','video','calculator','games','network','system','settings']:
-    (A/'apps'/f'{n}.app').write_text(f'PCOS APP DESCRIPTOR\nNAME={n.upper()}\n',encoding='ascii')
-# BMP 160x100 24-bit, geometric red HUD art.
+(A/'files'/'readme.txt').write_text('PCOS 0.6\nРЕТРО-ФУТУРИСТИЧЕСКАЯ ЛЕГКАЯ ОПЕРАЦИОННАЯ СИСТЕМА\n\nСтрелки вверх/вниз переключают приложения. F1..F11 - быстрый выбор.\nТерминал: команда help показывает справку.\n',encoding='utf-8')
+(A/'files'/'notes.txt').write_text('PCOS // ЗАМЕТКИ\n\nАВТОСОХРАНЕНИЕ ВКЛЮЧЕНО. ПРИ ПОДКЛЮЧЕННОМ ДИСКЕ PCOSDATA ЗАМЕТКИ СОХРАНЯЮТСЯ ПОСЛЕ ПЕРЕЗАГРУЗКИ.\n',encoding='utf-8')
+(A/'config'/'display.cfg').write_text('РЕЖИМ=АВТО\nТЕМА=КРАСНЫЙ_ТЕРМИНАЛ\nОТРИСОВКА=ASCII_HUD\n',encoding='utf-8')
+(A/'config'/'network.cfg').write_text('РЕЖИМ=DHCP\nДРАЙВЕР=RTL8139\n',encoding='utf-8')
+app_ru={
+    'terminal':'ТЕРМИНАЛ','files':'ФАЙЛЫ','notes':'ЗАМЕТКИ','player':'ПЛЕЕР','photos':'ФОТО',
+    'video':'ВИДЕО','calculator':'КАЛЬКУЛЯТОР','games':'ИГРЫ','network':'СЕТЬ','system':'СИСТЕМА','settings':'НАСТРОЙКИ'
+}
+for n,ru in app_ru.items():
+    (A/'apps'/f'{n}.app').write_text(f'ОПИСАТЕЛЬ ПРИЛОЖЕНИЯ PCOS\nИМЯ={ru}\n',encoding='utf-8')
+# BMP 160x100 24-bit, геометрическая HUD-графика.
 w,h=160,100
 row=(w*3+3)&~3
 pix=bytearray(row*h)
@@ -39,13 +43,13 @@ def write_hud_bmp(path, kind):
                 hot=(x%16==0 or y%16==0 or abs(dx-dy)<1 or abs(dx+dy)<1)
                 r,g,b=(230,35,25) if hot else ((50,3,3) if y%5==0 else (5,0,0))
             else:
-                rr=math.hypot(dx,dy); hot=(abs(rr-18)<1.3 or abs(rr-34)<1.3 or (abs(dy)<2 and abs(dx)<50))
+                rr=math.hypot(dx,dy);hot=(abs(rr-18)<1.3 or abs(rr-34)<1.3 or (abs(dy)<2 and abs(dx)<50))
                 r,g,b=(255,55,35) if hot else ((65,5,5) if x%13==0 else (7,0,0))
             o=y*row+x*3;pix2[o:o+3]=bytes((b,g,r))
     path.write_bytes(hdr+pix2)
 write_hud_bmp(A/'photos'/'grid.bmp',1)
 write_hud_bmp(A/'photos'/'optic.bmp',2)
-# WAV tracks: 8-bit mono 11025Hz, deliberately old-hardware friendly.
+# WAV: 8-bit mono 11025 Hz для слабого железа.
 for name,freq in [('future.wav',110),('machine.wav',165),('night.wav',220)]:
     path=A/'music'/name
     rate=11025;seconds=2.5
@@ -57,7 +61,7 @@ for name,freq in [('future.wav',110),('machine.wav',165),('night.wav',220)]:
             v=128+int(42*math.sin(2*math.pi*freq*t))+int(18*(1 if math.sin(2*math.pi*(freq/2)*t)>=0 else -1))
             out.append(max(0,min(255,v)))
         wf.writeframes(out)
-# Minimal uncompressed AVI, 80x60, 12 frames @ 6 fps.
+# Минимальный несжатый AVI, 80x60, 12 кадров, 6 FPS.
 def chunk(tag,data):
     pad=b'\0' if len(data)&1 else b''
     return tag+struct.pack('<I',len(data))+data+pad
@@ -89,7 +93,7 @@ hdrl=list_chunk(b'hdrl',chunk(b'avih',avih)+list_chunk(b'strl',chunk(b'strh',str
 movi=list_chunk(b'movi',b''.join(chunk(b'00db',fr) for fr in frames))
 body=b'AVI '+hdrl+movi
 (A/'video'/'scan.avi').write_bytes(b'RIFF'+struct.pack('<I',len(body))+body)
-# Tiny DOS COM program: AH=09 print string, AX=4C00 exit.
+# Тестовая DOS COM программа оставлена ASCII: гостевая DOS-среда использует старую кодировку.
 msg=b'PCOS DOS86 RUNTIME ONLINE!$'
 code=bytearray([0xBA,0x0C,0x01,0xB4,0x09,0xCD,0x21,0xB8,0x00,0x4C,0xCD,0x21])+msg
 (A/'games'/'hello.com').write_bytes(code)
@@ -105,21 +109,21 @@ vga13=bytearray([
  0xB8,0x03,0x00,0xCD,0x10,
  0xB8,0x00,0x4C,0xCD,0x21])
 (A/'games'/'vga13.com').write_bytes(vga13)
-# Tiny valid MZ executable for exercising the EXE loader.
+# Минимальный MZ EXE для проверки загрузчика EXE.
 exe_code=bytearray([0x8C,0xC8,0x8E,0xD8,0xBA,0x10,0x00,0xB4,0x09,0xCD,0x21,0xB8,0x00,0x4C,0xCD,0x21])+b'PCOS MZ EXE LOADER ONLINE!$'
 hdr=bytearray(32);hdr[0:2]=b'MZ';total=32+len(exe_code);pages=(total+511)//512;last=total%512
 struct.pack_into('<H',hdr,2,last);struct.pack_into('<H',hdr,4,pages);struct.pack_into('<H',hdr,6,0);struct.pack_into('<H',hdr,8,2)
 struct.pack_into('<H',hdr,14,0);struct.pack_into('<H',hdr,16,0xFFFE);struct.pack_into('<H',hdr,20,0);struct.pack_into('<H',hdr,22,0);struct.pack_into('<H',hdr,24,0x1C)
 (A/'games'/'hello.exe').write_bytes(hdr+exe_code)
-(A/'games'/'README.TXT').write_text('PCOS GAMES v0.3\n\nDOS86 WINDOWED: COM + MZ EXE, 8086/80186, BIOS keyboard/timer, DOS file API, VGA13/ModeX and SB16 bridge.\nLEGACY DOS: press L in Games or run legacydos to boot BIOS HDD2 for native 386/DOS4GW games. Reboot to return to PCOS.\n',encoding='ascii')
-(A/'system'/'version.txt').write_text('PCOS 0.3\nKERNEL=i686\nUI=ASCII_HUD\nDOS86=REALMODE_COM_MZ_VGA13_MODEX_SB16\nLEGACY_DOS=BIOS_HDD2_NATIVE\n',encoding='ascii')
-# USTAR initrd with paths beginning pc/
+(A/'games'/'README.TXT').write_text('PCOS ИГРЫ 0.6\n\nDOS86 В ОКНЕ: COM + MZ EXE, 8086/80186, BIOS-клавиатура/таймер, DOS API файлов, VGA13/ModeX и мост SB16.\nLEGACY DOS: нажмите L в приложении ИГРЫ или выполните legacydos, чтобы загрузить второй BIOS-диск для нативных игр 386/DOS4GW. Для возврата в PCOS нужна перезагрузка.\n',encoding='utf-8')
+(A/'system'/'version.txt').write_text('PCOS 0.6\nЯДРО=i386\nИНТЕРФЕЙС=ASCII_HUD_RU\nDOS86=REALMODE_COM_MZ_VGA13_MODEX_SB16\nLEGACY_DOS=BIOS_HDD2_NATIVE\n',encoding='utf-8')
+# USTAR initrd с корнем pc/.
 out=ROOT/'build'/'pcfs.tar';out.parent.mkdir(parents=True,exist_ok=True)
 with tarfile.open(out,'w',format=tarfile.USTAR_FORMAT) as tf:
     tf.add(A,arcname='pc',recursive=True)
 print(out)
 
-# Safe writable PCOS data-disk template.
+# Безопасный шаблон записываемого диска PCOSDATA.
 data_dir=ROOT/'data';data_dir.mkdir(parents=True,exist_ok=True)
 data_img=data_dir/'pcos-data.img'
 if not data_img.exists():
