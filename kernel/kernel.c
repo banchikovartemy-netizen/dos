@@ -21,7 +21,7 @@ static int boot_full(u32 magic,u32 mbi_addr){
 }
 void kernel_main(u32 magic,u32 mbi_addr){
     AppId current=APP_TERMINAL;int mx=8,my=8;int full=boot_full(magic,mbi_addr);int heartbeat=0;
-    debug_puts("PCOS 0.4: kernel_main\n");
+    debug_puts("PCOS 0.5: kernel_main\n");
     idt_init();
     debug_puts("PCOS: video init\n");vga_init(magic,mbi_addr);
     debug_puts("PCOS: core apps/fs init\n");apps_init(magic,mbi_addr);
