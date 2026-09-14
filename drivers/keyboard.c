@@ -4,8 +4,6 @@
 
 static const char lower_map[128]={[0x02]='1',[0x03]='2',[0x04]='3',[0x05]='4',[0x06]='5',[0x07]='6',[0x08]='7',[0x09]='8',[0x0A]='9',[0x0B]='0',[0x0C]='-',[0x0D]='=',[0x10]='q',[0x11]='w',[0x12]='e',[0x13]='r',[0x14]='t',[0x15]='y',[0x16]='u',[0x17]='i',[0x18]='o',[0x19]='p',[0x1A]='[',[0x1B]=']',[0x1E]='a',[0x1F]='s',[0x20]='d',[0x21]='f',[0x22]='g',[0x23]='h',[0x24]='j',[0x25]='k',[0x26]='l',[0x27]=';',[0x28]='\'',[0x29]='`',[0x2B]='\\',[0x2C]='z',[0x2D]='x',[0x2E]='c',[0x2F]='v',[0x30]='b',[0x31]='n',[0x32]='m',[0x33]=',',[0x34]='.',[0x35]='/',[0x39]=' '};
 static const char upper_map[128]={[0x02]='!',[0x03]='@',[0x04]='#',[0x05]='$',[0x06]='%',[0x07]='^',[0x08]='&',[0x09]='*',[0x0A]='(',[0x0B]=')',[0x0C]='_',[0x0D]='+',[0x10]='Q',[0x11]='W',[0x12]='E',[0x13]='R',[0x14]='T',[0x15]='Y',[0x16]='U',[0x17]='I',[0x18]='O',[0x19]='P',[0x1A]='{',[0x1B]='}',[0x1E]='A',[0x1F]='S',[0x20]='D',[0x21]='F',[0x22]='G',[0x23]='H',[0x24]='J',[0x25]='K',[0x26]='L',[0x27]=':',[0x28]='"',[0x29]='~',[0x2B]='|',[0x2C]='Z',[0x2D]='X',[0x2E]='C',[0x2F]='V',[0x30]='B',[0x31]='N',[0x32]='M',[0x33]='<',[0x34]='>',[0x35]='?',[0x39]=' '};
-
-/* Russian ЙЦУКЕН mapping by physical Set-1 scan code. */
 static const u32 ru_lower[128]={
  [0x10]=0x0439,[0x11]=0x0446,[0x12]=0x0443,[0x13]=0x043A,[0x14]=0x0435,[0x15]=0x043D,[0x16]=0x0433,[0x17]=0x0448,[0x18]=0x0449,[0x19]=0x0437,[0x1A]=0x0445,[0x1B]=0x044A,
  [0x1E]=0x0444,[0x1F]=0x044B,[0x20]=0x0432,[0x21]=0x0430,[0x22]=0x043F,[0x23]=0x0440,[0x24]=0x043E,[0x25]=0x043B,[0x26]=0x0434,[0x27]=0x0436,[0x28]=0x044D,
@@ -18,6 +16,7 @@ static const u32 ru_upper[128]={
 };
 
 static int layout_ru=1;
+static u8 pending_utf8=0;
 static int wait_in(void){for(u32 i=0;i<100000;i++)if(!(inb(0x64)&2))return 1;return 0;}
 static int wait_out(void){for(u32 i=0;i<100000;i++)if(inb(0x64)&1)return 1;return 0;}
 int keyboard_russian(void){return layout_ru;}
@@ -25,29 +24,28 @@ const char *keyboard_layout_name(void){return layout_ru?"RU":"EN";}
 
 void keyboard_init(void){
     for(int i=0;i<64;i++){u8 st=inb(0x64);if(!(st&1))break;(void)inb(0x60);}
-    if(wait_in())outb(0x64,0xAE);
-    if(wait_in())outb(0x64,0x20);
-    u8 c=wait_out()?inb(0x60):0x40;
-    c|=0x40;c&=(u8)~0x10;
-    if(wait_in())outb(0x64,0x60);
-    if(wait_in())outb(0x60,c);
-    if(wait_in())outb(0x60,0xF4);
-    if(wait_out())(void)inb(0x60);
-    layout_ru=1;
+    if(wait_in())outb(0x64,0xAE);if(wait_in())outb(0x64,0x20);
+    u8 c=wait_out()?inb(0x60):0x40;c|=0x40;c&=(u8)~0x10;
+    if(wait_in())outb(0x64,0x60);if(wait_in())outb(0x60,c);if(wait_in())outb(0x60,0xF4);if(wait_out())(void)inb(0x60);
+    layout_ru=1;pending_utf8=0;
+}
+
+static void put_utf8(KeyEvent *e,u32 cp){
+    e->cp=cp;
+    if(cp<0x80){e->ch=(char)cp;return;}
+    if(cp<0x800){e->ch=(char)(0xC0|(cp>>6));pending_utf8=(u8)(0x80|(cp&0x3F));return;}
+    e->ch='?';
 }
 
 KeyEvent keyboard_poll(void){
     static u8 shift=0,ctrl=0,alt=0,ext=0,combo=0;
     KeyEvent e={0,0,0,KEY_NONE,ctrl,alt,shift};
+    if(pending_utf8){e.pressed=1;e.ch=(char)pending_utf8;pending_utf8=0;return e;}
     u8 st=inb(0x64);if(!(st&1))return e;
     if(st&0x20){if(!mouse_available())(void)inb(0x60);return e;}
     u8 s=inb(0x60);
     if(s==0xE0){ext=1;return e;}
-    if(s==0x2A||s==0x36){
-        shift=1;e.shift=1;
-        if(alt&&!combo){layout_ru=!layout_ru;combo=1;e.pressed=1;e.special=KEY_LAYOUT;}
-        return e;
-    }
+    if(s==0x2A||s==0x36){shift=1;e.shift=1;if(alt&&!combo){layout_ru=!layout_ru;combo=1;e.pressed=1;e.special=KEY_LAYOUT;}return e;}
     if(s==0xAA||s==0xB6){shift=0;combo=0;return e;}
     if(s==0x1D){ctrl=1;return e;}if(s==0x9D){ctrl=0;return e;}
     if(s==0x38){alt=1;e.alt=1;if(shift&&!combo){layout_ru=!layout_ru;combo=1;e.pressed=1;e.special=KEY_LAYOUT;}return e;}
@@ -62,7 +60,7 @@ KeyEvent keyboard_poll(void){
     else if(s>=0x3B&&s<=0x44)e.special=(u8)(KEY_F1+(s-0x3B));
     else if(s==0x57)e.special=KEY_F11;
     else if(s==0x58){layout_ru=!layout_ru;e.special=KEY_LAYOUT;}
-    else if(layout_ru&&ru_lower[s])e.cp=shift?ru_upper[s]:ru_lower[s];
+    else if(layout_ru&&ru_lower[s])put_utf8(&e,shift?ru_upper[s]:ru_lower[s]);
     else e.ch=shift?upper_map[s]:lower_map[s];
     return e;
 }
