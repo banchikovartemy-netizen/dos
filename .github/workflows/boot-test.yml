@@ -18,32 +18,13 @@ jobs:
       - name: Compile and validate
         run: make clean && make check && make iso
 
-      - name: Russian framebuffer default stability test
+      - name: Full-driver default stability test
         run: |
-          rm -f build/qemu-ru.log
-          timeout 15s qemu-system-i386 \
-            -m 16M -vga std \
-            -drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
-            -cdrom build/pcos-0.6.iso -boot d \
-            -display none -serial none -monitor none \
-            -no-reboot -no-shutdown \
-            -debugcon file:build/qemu-ru.log \
-            -global isa-debugcon.iobase=0xe9 || true
-          cat build/qemu-ru.log
-          ! grep -q "EXCEPTION" build/qemu-ru.log
-          grep -q "PCOS: UI ONLINE" build/qemu-ru.log
-          grep -q "PCOS: entering event loop" build/qemu-ru.log
-          grep -q "PCOS: ALIVE 5S" build/qemu-ru.log
-
-      - name: Russian full-driver framebuffer stability test
-        run: |
-          sed -i 's/set default=0/set default=1/' iso/boot/grub/grub.cfg
-          make iso
           rm -f build/qemu-full.log
           timeout 20s qemu-system-i386 \
             -m 32M -vga std \
             -drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
-            -cdrom build/pcos-0.6.iso -boot d \
+            -cdrom build/pcos-0.7.iso -boot d \
             -nic user,model=rtl8139 -device sb16 \
             -display none -serial none -monitor none \
             -no-reboot -no-shutdown \
@@ -51,11 +32,30 @@ jobs:
             -global isa-debugcon.iobase=0xe9 || true
           cat build/qemu-full.log
           ! grep -q "EXCEPTION" build/qemu-full.log
+          grep -q "PCOS: UI ONLINE" build/qemu-full.log
           grep -q "PCOS: ATA init done" build/qemu-full.log
           grep -q "PCOS: mouse init done" build/qemu-full.log
           grep -q "PCOS: network init done" build/qemu-full.log
           grep -q "PCOS: audio init done" build/qemu-full.log
           grep -q "PCOS: ALIVE 5S" build/qemu-full.log
+
+      - name: Safe framebuffer stability test
+        run: |
+          sed -i 's/set default=0/set default=1/' iso/boot/grub/grub.cfg
+          make iso
+          rm -f build/qemu-safe.log
+          timeout 15s qemu-system-i386 \
+            -m 16M -vga std \
+            -drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
+            -cdrom build/pcos-0.7.iso -boot d \
+            -display none -serial none -monitor none \
+            -no-reboot -no-shutdown \
+            -debugcon file:build/qemu-safe.log \
+            -global isa-debugcon.iobase=0xe9 || true
+          cat build/qemu-safe.log
+          ! grep -q "EXCEPTION" build/qemu-safe.log
+          grep -q "PCOS: UI ONLINE" build/qemu-safe.log
+          grep -q "PCOS: ALIVE 5S" build/qemu-safe.log
 
       - name: Emergency VGA text stability test
         run: |
@@ -65,7 +65,7 @@ jobs:
           timeout 15s qemu-system-i386 \
             -m 16M -vga std \
             -drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
-            -cdrom build/pcos-0.6.iso -boot d \
+            -cdrom build/pcos-0.7.iso -boot d \
             -display none -serial none -monitor none \
             -no-reboot -no-shutdown \
             -debugcon file:build/qemu-text.log \
