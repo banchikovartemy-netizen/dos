@@ -7,9 +7,9 @@ LDFLAGS := -m elf_i386 -T linker.ld
 C_SRC := $(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c)
 OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
-ISO := build/pcos-0.6.iso
+ISO := build/pcos-0.7.iso
 
-.PHONY: all clean assets iso run run-audio run-debug run-legacy check test-dos86 add-game legacy-add-game
+.PHONY: all clean assets iso run run-audio run-debug run-legacy run-doom web-bridge check test-dos86 add-game legacy-add-game doom-install
 
 all: build/pcos.elf assets
 
@@ -65,7 +65,7 @@ iso: build/pcos.elf assets
 	@echo "Created $(ISO)"
 
 run: iso
-	qemu-system-i386 -m 16M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
+	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
 
 run-audio: iso
 	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0 -no-reboot -no-shutdown
@@ -78,8 +78,19 @@ run-legacy: iso
 		-cdrom $(ISO) -boot d \
 		-nic user,model=rtl8139 -device sb16
 
+run-doom: iso
+	@test -n "$(DOOMIMG)" || (echo "Usage: make run-doom DOOMIMG=/path/to/bootable-dos-with-doom.img"; exit 1)
+	qemu-system-i386 -m 32M -vga std \
+		-drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
+		-drive file="$(DOOMIMG)",format=raw,if=ide,index=1 \
+		-cdrom $(ISO) -boot d \
+		-nic user,model=rtl8139 -device sb16
+
+web-bridge:
+	python3 tools/web_bridge.py
+
 run-debug: iso
-	qemu-system-i386 -m 16M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
+	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
 
 clean:
 	rm -rf build/* iso/boot/pcos.elf iso/boot/pcfs.tar
@@ -91,4 +102,8 @@ add-game:
 
 legacy-add-game:
 	@test -n "$(DOSIMG)" -a -n "$(GAME)" || (echo "Usage: make legacy-add-game DOSIMG=/path/dos.img GAME=/path/game"; exit 1)
+	./tools/inject_legacy_game.sh "$(DOSIMG)" "$(GAME)"
+
+doom-install:
+	@test -n "$(DOSIMG)" -a -n "$(GAME)" || (echo "Usage: make doom-install DOSIMG=/path/dos.img GAME=/path/to/DOOM-directory-or-files"; exit 1)
 	./tools/inject_legacy_game.sh "$(DOSIMG)" "$(GAME)"
