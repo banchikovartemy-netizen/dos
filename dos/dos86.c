@@ -1,0 +1,6 @@
+#include "dos86_part1.inc"
+#include "dos86_part2.inc"
+#include "dos86_part3.inc"
+#include "dos86_part4.inc"
+#include "dos86_part5.inc"
+#include "dos86_part6.inc"
