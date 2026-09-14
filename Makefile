@@ -7,7 +7,7 @@ LDFLAGS := -m elf_i386 -T linker.ld
 C_SRC := $(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c)
 OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
-ISO := build/pcos-0.5.iso
+ISO := build/pcos-0.6.iso
 
 .PHONY: all clean assets iso run run-audio run-debug run-legacy check test-dos86 add-game legacy-add-game
 
