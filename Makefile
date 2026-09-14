@@ -9,7 +9,7 @@ OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o 
 ASSET_TAR := build/pcfs.tar
 ISO := build/pcos-0.7.iso
 
-.PHONY: all clean assets iso run run-audio run-debug run-legacy run-doom web-bridge check test-dos86 add-game legacy-add-game doom-install
+.PHONY: all clean assets iso run run-web run-audio run-debug run-legacy run-doom web-setup web-bridge check test-dos86 add-game legacy-add-game doom-install
 
 all: build/pcos.elf assets
 
@@ -69,6 +69,24 @@ iso: build/pcos.elf assets
 run: iso
 	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
 
+web-setup:
+	python3 -m venv .venv
+	.venv/bin/pip install --upgrade pip
+	.venv/bin/pip install playwright pillow
+	.venv/bin/playwright install chromium
+
+web-bridge:
+	@test -x .venv/bin/python || (echo "Run 'make web-setup' first"; exit 1)
+	.venv/bin/python tools/web_bridge.py
+
+run-web: iso
+	@test -x .venv/bin/python || (echo "Run 'make web-setup' first"; exit 1)
+	@set -e; \
+	.venv/bin/python tools/web_bridge.py & BRIDGE=$$!; \
+	trap 'kill $$BRIDGE 2>/dev/null || true' EXIT INT TERM; \
+	sleep 1; \
+	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown
+
 run-audio: iso
 	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0 -no-reboot -no-shutdown
 
@@ -87,9 +105,6 @@ run-doom: iso
 		-drive file="$(DOOMIMG)",format=raw,if=ide,index=1 \
 		-cdrom $(ISO) -boot d \
 		-nic user,model=rtl8139 -device sb16
-
-web-bridge:
-	python3 tools/web_bridge.py
 
 run-debug: iso
 	qemu-system-i386 -m 32M -vga std -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom $(ISO) -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -d guest_errors,cpu_reset -debugcon stdio -global isa-debugcon.iobase=0xe9
