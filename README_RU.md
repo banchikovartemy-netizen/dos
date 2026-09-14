@@ -14,19 +14,16 @@ PCOS — маленькая 32-битная x86/i386 ОС с собственн�
 
 PCOS остаётся слишком маленькой для встроенного Chromium, поэтому BROWSER использует PCOS Web Bridge. На хост-компьютере запускается настоящий Chromium через Playwright: именно он обрабатывает HTTPS, современный HTML/CSS и JavaScript. PCOS получает уменьшенный ASCII-кадр страницы и показывает его в своём HUD, поэтому внешний стиль системы не меняется.
 
-Установка Web Bridge на Arch:
+Один раз установи Web Bridge:
 
 ```bash
-python -m venv .venv
-.venv/bin/pip install playwright pillow
-.venv/bin/playwright install chromium
-.venv/bin/python tools/web_bridge.py
+make web-setup
 ```
 
-После этого во втором терминале:
+После этого PCOS вместе с браузерным мостом запускается одной командой:
 
 ```bash
-make run
+make run-web
 ```
 
 В PCOS открой `BROWSER`, введи адрес и нажми Enter или `[GO]`. Для QEMU мост доступен как `10.0.2.2:7777`.
@@ -41,15 +38,21 @@ ASCII-страница интерактивная: клик по символа�
 doom
 ```
 
-DOOM требует 386/DOS4GW, поэтому запускается через уже существующий Legacy DOS chainloader. PCOS не распространяет коммерческий `DOOM1.WAD` или MS-DOS. Нужен твой легально полученный DOOM и загрузочный DOS-образ.
+PCOS не распространяет коммерческий `DOOM1.WAD` или MS-DOS. Нужны твои легально полученные `DOOM.EXE` + `DOOM1.WAD`/`DOOM.WAD` и загрузочный DOS/FreeDOS FAT-образ.
 
-Запуск в QEMU:
+Подготовить отдельный Doom-образ можно так:
 
 ```bash
-make run-doom DOOMIMG=/path/to/bootable-dos-with-doom.img
+make doom-install DOSIMG=/path/to/freedos.img GAME=/path/to/DOOM
 ```
 
-После запуска PCOS выбери `GAMES -> DOOM 1`.
+Установщик копирует игру в `C:\DOOM` и добавляет запуск `DOOM.EXE` в `AUTOEXEC.BAT`. После этого запускай PCOS с этим диском:
+
+```bash
+make run-doom DOOMIMG=/path/to/freedos.img
+```
+
+В PCOS нажми `GAMES -> DOOM 1`. PCOS передаст управление второму DOS-диску, а его `AUTOEXEC.BAT` автоматически запустит Doom.
 
 ## Управление
 
@@ -77,7 +80,7 @@ browse example.com
 ## Сборка на Arch Linux
 
 ```bash
-sudo pacman -S --needed base-devel grub xorriso qemu-system-x86 mtools
+sudo pacman -S --needed base-devel grub xorriso qemu-system-x86 mtools python
 cd ~/dos
 git pull
 make clean
