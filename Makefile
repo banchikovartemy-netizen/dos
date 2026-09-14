@@ -5,7 +5,7 @@ NM ?= nm
 CFLAGS := -m32 -std=gnu99 -O2 -ffreestanding -fno-pie -fno-stack-protector -fno-builtin -fno-asynchronous-unwind-tables -fno-unwind-tables -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Iinclude
 LDFLAGS := -m elf_i386 -T linker.ld
 C_SRC := $(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c)
-OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o
+OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
 
 .PHONY: all clean assets iso run run-audio run-debug run-legacy check test-dos86 add-game legacy-add-game
@@ -21,6 +21,10 @@ build/boot/boot.o: boot/boot.S
 	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
 
 build/boot/legacy.o: boot/legacy.S
+	@mkdir -p $(dir $@)
+	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
+
+build/boot/isr.o: boot/isr.S
 	@mkdir -p $(dir $@)
 	$(CC) -m32 -ffreestanding -fno-pie -c $< -o $@
 
@@ -56,25 +60,25 @@ iso: build/pcos.elf assets
 	@mkdir -p iso/boot/grub
 	cp build/pcos.elf iso/boot/pcos.elf
 	cp $(ASSET_TAR) iso/boot/pcfs.tar
-	grub-mkrescue -o build/pcos-0.3.iso iso
-	@echo "Created build/pcos-0.3.iso"
+	grub-mkrescue -o build/pcos-0.4.iso iso
+	@echo "Created build/pcos-0.4.iso"
 
 run: iso
-	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.3.iso -nic user,model=rtl8139 -device sb16
+	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -boot d -nic user,model=rtl8139 -device sb16
 
 run-audio: iso
-	qemu-system-i386 -m 32M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.3.iso -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0
+	qemu-system-i386 -m 32M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -nic user,model=rtl8139 -audiodev pa,id=snd0 -device sb16,audiodev=snd0
 
 run-legacy: iso
 	@test -n "$(DOSIMG)" || (echo "Usage: make run-legacy DOSIMG=/path/to/bootable-dos-disk.img"; exit 1)
 	qemu-system-i386 -m 32M \
 		-drive file=data/pcos-data.img,format=raw,if=ide,index=0 \
 		-drive file="$(DOSIMG)",format=raw,if=ide,index=1 \
-		-cdrom build/pcos-0.3.iso -boot d \
+		-cdrom build/pcos-0.4.iso -boot d \
 		-nic user,model=rtl8139 -device sb16
 
 run-debug: iso
-	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.3.iso -nic user,model=rtl8139 -device sb16 -debugcon stdio -global isa-debugcon.iobase=0xe9
+	qemu-system-i386 -m 16M -drive file=data/pcos-data.img,format=raw,if=ide,index=0 -cdrom build/pcos-0.4.iso -boot d -nic user,model=rtl8139 -device sb16 -no-reboot -no-shutdown -debugcon stdio -global isa-debugcon.iobase=0xe9
 
 clean:
 	rm -rf build/* iso/boot/pcos.elf iso/boot/pcfs.tar
