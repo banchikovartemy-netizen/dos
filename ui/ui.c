@@ -9,21 +9,21 @@ void ui_label(int x,int y,const char*l,const char*v){vga_text(x,y,l,attr(vga_dim
 void ui_draw(AppId app){
     vga_clear();u8 a=attr(vga_fg()),d=attr(vga_dim()),h=attr(vga_hi());
     vga_hline(0,0,VGA_W,'=',d);
-    vga_text(2,0,"PCOS // КИБЕРТЕРМИНАЛ",h);
-    vga_text(61,0,"СИСТЕМА::ГОТОВА",a);
+    vga_text(2,0,"PCOS // HUD SYSTEM",h);
+    vga_text(67,0,"ONLINE",a);
     vga_vline(SIDE_W,1,24,'|',d);
-    vga_text(2,2,"ПРИЛОЖЕНИЯ",d);
+    vga_text(2,2,"APPS",d);
     vga_hline(1,3,15,'-',d);
     for(int i=0;i<APP_COUNT;i++){
         int y=4+i;
         if(i==(int)app){vga_put(1,y,'>',h);vga_text_clip(3,y,apps_name((AppId)i),13,h);}
         else vga_text_clip(3,y,apps_name((AppId)i),13,a);
     }
-    vga_text(2,17,"ВВЕРХ/ВНИЗ",d);
-    vga_text(2,18,"F1..F11 БЫСТРО",d);
-    vga_text(2,19,"F12 RU/EN",d);
+    vga_text(2,17,"MOUSE: CLICK",d);
+    vga_text(2,18,"TAB: MENU/APP",d);
+    vga_text(2,19,"F12: RU/EN",d);
     vga_text(2,20,"ASCII//HUD",d);
-    vga_text(2,21,"РАСКЛАДКА//",a);vga_text(13,21,keyboard_layout_name(),h);
-    vga_text(2,23,"БЕЗ КОМПОЗИТОРА",d);
+    vga_text(2,21,"LAYOUT//",a);vga_text(11,21,keyboard_layout_name(),h);
+    vga_text(2,23,"NO COMPOSITOR",d);
     apps_draw(app);
 }
