@@ -4,7 +4,7 @@ LD ?= ld
 NM ?= nm
 CFLAGS := -m32 -march=i386 -mtune=generic -std=gnu99 -O2 -ffreestanding -fno-pie -fno-pic -fno-plt -fno-stack-protector -fno-builtin -fno-asynchronous-unwind-tables -fno-unwind-tables -mpreferred-stack-boundary=2 -mincoming-stack-boundary=2 -Wall -Wextra -Wno-unused-parameter -Wno-misleading-indentation -Iinclude
 LDFLAGS := -m elf_i386 -T linker.ld
-C_SRC := $(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c)
+C_SRC := $(filter-out apps/apps.c,$(wildcard kernel/*.c drivers/*.c ui/*.c apps/*.c fs/*.c net/*.c media/*.c audio/*.c dos/*.c))
 OBJ := $(patsubst %.c,build/%.o,$(C_SRC)) build/boot/boot.o build/boot/legacy.o build/boot/isr.o
 ASSET_TAR := build/pcfs.tar
 ISO := build/pcos-0.7.iso
